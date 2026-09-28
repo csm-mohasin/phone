@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stealth Gate Web C2 Controller</title>
+  <style>
+    :root {
+      --bg: #090D14;
+      --card: #121824;
+      --cyan: #00E5FF;
+      --red: #FF3366;
+      --green: #00E676;
+      --text: #F0F4F8;
+      --muted: #8892B0;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 580px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(0, 229, 255, 0.2);
+      border-radius: 14px;
+      padding: 20px;
+    }
+    h1 { margin: 0 0 4px 0; font-size: 22px; color: var(--cyan); }
+    p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .input-group { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; font-weight: bold; color: var(--text); }
+    input {
+      background: #0B101B;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      color: #FFF;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+    input:focus { outline: none; border-color: var(--cyan); }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+    button {
+      padding: 14px;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      border: none;
+      font-size: 14px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    button:active { transform: scale(0.97); }
+    .btn-red { background: var(--red); color: white; }
+    .btn-cyan { background: var(--cyan); color: #00363D; }
+    .btn-green { background: var(--green); color: #003314; }
+    .btn-outline { background: transparent; border: 1px solid var(--cyan); color: var(--cyan); }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
+    .log-box {
+      background: #000;
+      color: #00E5FF;
+      font-family: monospace;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      height: 90px;
+      overflow-y: auto;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card">
+    <h1>Stealth Gate C2 Controller</h1>
+    <p>Remote Sub-Millisecond Control Pipeline via Firebase RTDB</p>
+    
+    <div class="input-group">
+      <label>Firebase Database URL</label>
+      <input type="text" id="dbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com">
+    </div>
+    <div class="input-group">
+      <label>Device Channel ID</label>
+      <input type="text" id="channelId" value="stealth_gate_01">
+    </div>
+    <div class="input-group">
+      <label>Auth Secret (Optional)</label>
+      <input type="password" id="authSecret" placeholder="Optional Firebase Database Secret">
+    </div>
+  </div>
+
+  <div class="card">
+    <label>Live Remote Actions</label>
+    <div class="btn-grid">
+      <button class="btn-red" style="grid-column: span 2;" onclick="sendCommand({ emergencyLock: true })">
+        🚨 TRIGGER EMERGENCY LOCKDOWN
+      </button>
+      <button class="btn-cyan" onclick="sendCommand({ isGateEnabled: true, emergencyLock: false })">
+        🔒 Activate Gate Shield
+      </button>
+      <button class="btn-green" onclick="sendCommand({ isGateEnabled: false, emergencyLock: false })">
+        🔓 Pause Gate (Unlock)
+      </button>
+      <button class="btn-outline" style="grid-column: span 2;" onclick="fetchDeviceStatus()">
+        📡 Check Device Live Heartbeat
+      </button>
+    </div>
+
+    <div class="status-badge" id="badgeContainer" style="background: rgba(0, 230, 118, 0.15); color: var(--green);">
+      <div class="status-dot"></div>
+      <span id="liveStatus">Ready to send commands</span>
+    </div>
+
+    <div class="log-box" id="logBox">> Controller initialized. Ready.</div>
+  </div>
+</div>
+
+<script>
+  function getEndpoint() {
+    let url = document.getElementById("dbUrl").value.trim();
+    if (!url) {
+      alert("Please enter your Firebase Realtime Database URL first!");
+      return null;
+    }
+    if (url.endsWith("/")) url = url.slice(0, -1);
+    const channel = document.getElementById("channelId").value.trim() || "stealth_gate_01";
+    const secret = document.getElementById("authSecret").value.trim();
+    let finalUrl = `${url}/${channel}.json`;
+    if (secret) finalUrl += `?auth=${encodeURIComponent(secret)}`;
+    return finalUrl;
+  }
+
+  function log(msg) {
+    const box = document.getElementById("logBox");
+    box.innerHTML += `<br>> [${new Date().toLocaleTimeString()}] ${msg}`;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendCommand(payload) {
+    const url = getEndpoint();
+    if (!url) return;
+    log(`Sending PATCH: ${JSON.stringify(payload)}`);
+    try {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...payload,
+          timestamp: Date.now()
+        })
+      });
+      if (res.ok) {
+        log(`SUCCESS (HTTP ${res.status}): Command delivered to Firebase!`);
+        document.getElementById("liveStatus").innerText = "Command Dispatched to Device";
+      } else {
+        log(`ERROR: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      log(`FAILED: ${err.message}`);
+    }
+  }
+
+  async function fetchDeviceStatus() {
+    let url = document.getElementById("dbUrl").value.trim();
+    if (!url) { alert("Enter Database URL"); return; }
+    if (url.endsWith("/")) url = url.slice(0, -1);
+    const channel = document.getElementById("channelId").value.trim() || "stealth_gate_01";
+    const statusUrl = `${url}/${channel}/status.json`;
+    log(`Reading status from: ${statusUrl}`);
+    try {
+      const res = await fetch(statusUrl);
+      const data = await res.json();
+      if (data) {
+        log(`DEVICE STATUS: State=${data.deviceState}, ShieldActive=${data.shieldActive}, BlockedApps=${data.currentlyBlockedApps}/${data.totalProtectedApps}`);
+        document.getElementById("liveStatus").innerText = `Phone State: ${data.deviceState} (${new Date(data.lastHeartbeatTime).toLocaleTimeString()})`;
+      } else {
+        log("No status heartbeat found. (Ensure Android app has connected once)");
+      }
+    } catch (err) {
+      log(`Status fetch failed: ${err.message}`);
+    }
+  }
+</script>
+
+</body>
+</html>
