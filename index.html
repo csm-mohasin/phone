@@ -1,513 +1,800 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stealth Gate // Remote Command Center</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #070B0E;
-            --surface: #0E161C;
-            --card: #131E26;
-            --border: #1E2D38;
-            --cyan: #00E5FF;
-            --emerald: #00E676;
-            --rose: #FF1744;
-            --amber: #FFB300;
-            --violet: #D500F9;
-            --text-primary: #ECEFF1;
-            --text-secondary: #78909C;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stealth Gate — Web Controller & Webhook Command Center</title>
+  <style>
+    :root {
+      --bg: #070B14;
+      --card: #0F172A;
+      --card-border: #1E293B;
+      --primary: #00E5FF;
+      --primary-hover: #00B8D4;
+      --danger: #FF3366;
+      --danger-hover: #E0245E;
+      --success: #00E676;
+      --warning: #FFB300;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'JetBrains Mono', monospace;
-        }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      padding: 24px 16px;
+      line-height: 1.5;
+    }
 
-        body {
-            background-color: var(--bg);
-            color: var(--text-primary);
-            padding: 24px 16px;
-            display: flex;
-            justify-content: center;
-        }
+    .wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+    /* Top Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #00E5FF 0%, #7C4DFF 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+    }
+    .brand-text h1 {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .brand-text p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 16px;
-            border-bottom: 1px solid var(--border);
-        }
+    /* Status Badge */
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      background: #0F172A;
+      border: 1px solid var(--card-border);
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--danger);
+      transition: all 0.3s ease;
+    }
+    .status-badge.online .pulse-dot {
+      background-color: var(--success);
+      box-shadow: 0 0 12px var(--success);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(0, 230, 118, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
+    }
 
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--cyan);
-            letter-spacing: 1px;
-        }
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 10px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        }
+    /* Forms & Inputs */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input, textarea, select {
+      background-color: #1E293B;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #FFF;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 80px;
+      font-family: inherit;
+    }
 
-        .card-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: #00363D; }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 0 16px rgba(0, 229, 255, 0.4); }
+    .btn-danger { background: var(--danger); color: #FFF; }
+    .btn-danger:hover { background: var(--danger-hover); box-shadow: 0 0 16px rgba(255, 51, 102, 0.4); }
+    .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text); }
+    .btn-outline:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--text-muted); }
+    .btn-block { width: 100%; }
 
-        .card-desc {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            margin-bottom: 16px;
-        }
+    /* Grid System */
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
 
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }
+    /* Telemetry Stats */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .telemetry-box {
+      background: #141E33;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .telemetry-box .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; }
+    .telemetry-box .value { font-size: 16px; font-weight: 800; color: #FFF; margin-top: 4px; }
 
-        @media (max-width: 650px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
-        }
+    /* App Table */
+    .app-table-wrapper {
+      max-height: 420px;
+      overflow-y: auto;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      background: #0B1120;
+    }
+    .app-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .app-row:hover { background: rgba(255, 255, 255, 0.02); }
+    .badge-user { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(0, 229, 255, 0.15); color: #00E5FF; font-weight: 700; margin-left: 6px; }
+    .badge-sys { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #334155; color: #94A3B8; font-weight: 700; margin-left: 6px; }
 
-        label {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-            display: block;
-        }
+    /* 3x3 Pattern Pad */
+    .pattern-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 170px;
+      margin: 10px auto;
+    }
+    .pattern-dot {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: #1E293B;
+      border: 2px solid #334155;
+      color: #FFF;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pattern-dot.active {
+      background: var(--primary);
+      color: #000;
+      border-color: #FFF;
+      box-shadow: 0 0 12px var(--primary);
+    }
 
-        input, textarea, select {
-            width: 100%;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px 12px;
-            color: var(--text-primary);
-            font-size: 0.85rem;
-            outline: none;
-            transition: border 0.2s;
-        }
-
-        input:focus, textarea:focus {
-            border-color: var(--cyan);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.78rem;
-            font-weight: 700;
-        }
-
-        .pulse-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: currentColor;
-            box-shadow: 0 0 10px currentColor;
-            animation: pulse 1.8s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(0.9); opacity: 0.7; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.9); opacity: 0.7; }
-        }
-
-        .online {
-            background: rgba(0, 230, 118, 0.15);
-            color: var(--emerald);
-            border: 1px solid rgba(0, 230, 118, 0.4);
-        }
-
-        .offline {
-            background: rgba(255, 23, 68, 0.15);
-            color: var(--rose);
-            border: 1px solid rgba(255, 23, 68, 0.4);
-        }
-
-        .btn {
-            padding: 11px 18px;
-            border-radius: 8px;
-            border: none;
-            font-weight: 600;
-            font-size: 0.82rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.2s;
-        }
-
-        .btn:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-        }
-
-        .btn-cyan { background: var(--cyan); color: #00252b; }
-        .btn-rose { background: var(--rose); color: #fff; }
-        .btn-emerald { background: var(--emerald); color: #003314; }
-        .btn-amber { background: var(--amber); color: #2e1e00; }
-        .btn-outline {
-            background: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-        .btn-outline:hover {
-            border-color: var(--cyan);
-            color: var(--cyan);
-        }
-
-        .log-terminal {
-            background: #000;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 12px;
-            font-size: 0.76rem;
-            max-height: 160px;
-            overflow-y: auto;
-            color: var(--cyan);
-            line-height: 1.5;
-        }
-
-        .log-entry {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 4px;
-        }
-        .log-time { color: var(--text-secondary); }
-    </style>
+    /* Terminal Console */
+    .terminal {
+      background: #040711;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #00E676;
+      height: 150px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
 
-<div class="container">
-    <header>
-        <div class="logo">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
-            </svg>
-            STEALTH GATE // C2 WEBHOOK
-        </div>
-        <div id="deviceBadge" class="status-badge offline">
-            <span class="pulse-dot"></span>
-            <span id="deviceStatusText">DISCONNECTED</span>
-        </div>
-    </header>
+<div class="wrapper">
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-text">
+        <h1>Stealth Gate Webhook Hub</h1>
+        <p>Real-Time Sub-Millisecond Device Command Center & Web Controller</p>
+      </div>
+    </div>
+    <div id="liveBadge" class="status-badge">
+      <div class="pulse-dot"></div>
+      <span id="badgeText">DISCONNECTED</span>
+      <span id="badgePing" style="font-size: 11px; color: var(--text-muted);"></span>
+    </div>
+  </header>
 
-    <!-- 1. Firebase Configuration -->
+  <!-- Connection Configuration Bar -->
+  <div class="card" style="padding: 16px;">
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end;">
+      <div class="form-group">
+        <label>Firebase RTDB URL</label>
+        <input type="text" id="fbUrl" placeholder="https://your-project-rtdb.firebaseio.com">
+      </div>
+      <div class="form-group">
+        <label>Channel ID</label>
+        <input type="text" id="fbChannel" placeholder="stealth_gate_01" value="stealth_gate_01">
+      </div>
+      <div class="form-group">
+        <label>Auth Secret / Token (Optional)</label>
+        <input type="password" id="fbToken" placeholder="Database secret or token">
+      </div>
+      <button class="btn btn-primary" onclick="connect()" style="height: 42px;">Connect</button>
+    </div>
+  </div>
+
+  <!-- Live Telemetry Row -->
+  <div class="telemetry-grid">
+    <div class="telemetry-box">
+      <div class="label">Shield Security</div>
+      <div class="value" id="telShield">UNKNOWN</div>
+    </div>
+    <div class="telemetry-box">
+      <div class="label">Network Mode</div>
+      <div class="value" id="telNetwork">OFFLINE</div>
+    </div>
+    <div class="telemetry-box">
+      <div class="label">Protected Apps Locked</div>
+      <div class="value" id="telLockedCount">0</div>
+    </div>
+    <div class="telemetry-box">
+      <div class="label">Last Heartbeat</div>
+      <div class="value" id="telHeartbeat">Never</div>
+    </div>
+  </div>
+
+  <!-- Control Grid -->
+  <div class="grid-3">
+
+    <!-- 1. Instant Trigger Lock -->
     <div class="card">
-        <div class="card-title">1. Firebase Connection Setup</div>
-        <div class="card-desc">Enter your Firebase Realtime Database URL and the device channel ID set in the app.</div>
-        <div class="grid-2">
-            <div>
-                <label>Firebase Database URL</label>
-                <input type="text" id="firebaseUrl" placeholder="https://your-app-default-rtdb.firebaseio.com">
-            </div>
-            <div>
-                <label>Device Channel ID</label>
-                <input type="text" id="deviceChannel" value="stealth_gate_01">
-            </div>
-        </div>
-        <div style="margin-top: 14px; display: flex; gap: 10px; align-items: center;">
-            <button class="btn btn-cyan" onclick="saveConfig()">Save & Connect</button>
-            <button class="btn btn-outline" onclick="pollStatus()">Ping Device Now</button>
-            <span id="pingInfo" style="font-size: 0.75rem; color: var(--text-secondary);"></span>
-        </div>
+      <div class="card-header">
+        <div class="card-title">⚡ Instant Remote Lock</div>
+        <span style="font-size: 11px; color: var(--success); font-weight: 800;">SUB-MS</span>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted);">
+        Turns off the screen instantly & deploys full-screen barrier overlay. Revokes both Master & Decoy unlock sessions. Clears nodes in Firebase immediately for repeat execution.
+      </p>
+      <button class="btn btn-danger btn-block" onclick="sendTriggerLock()" style="padding: 16px; font-size: 15px;">
+        🔒 TRIGGER INSTANT SCREEN LOCK
+      </button>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button class="btn btn-outline" onclick="toggleGate(true)">🛡️ Enable Shield</button>
+        <button class="btn btn-outline" onclick="toggleGate(false)">⏸️ Pause Shield</button>
+      </div>
+      <button class="btn btn-outline" onclick="sendEmergencyLock()" style="color: var(--danger); border-color: rgba(255,51,102,0.3);">
+        🚨 Bar All Apps (Emergency)
+      </button>
     </div>
 
-    <!-- 2. Remote Lock & Emergency Control -->
+    <!-- 2. Remote Custom Popup Dialog -->
     <div class="card">
-        <div class="card-title">2. Immediate Lock & Security Switch</div>
-        <div class="card-desc">Send millisecond signals to lock the display, bar restricted apps, or toggle shield.</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-            <button class="btn btn-rose" onclick="sendTriggerLock()">
-                ⚡ Trigger Lock Now (Screen Off)
-            </button>
-            <button class="btn btn-amber" onclick="sendEmergencyLock()">
-                🔒 Bar All Restricted Apps
-            </button>
-            <button class="btn btn-emerald" onclick="setGateEnabled(true)">
-                🛡️ Activate Shield
-            </button>
-            <button class="btn btn-outline" onclick="setGateEnabled(false)">
-                ⏸️ Pause Shield
-            </button>
-        </div>
+      <div class="card-header">
+        <div class="card-title">💬 HTML Popup Dialog</div>
+        <span style="font-size: 11px; color: var(--primary); font-weight: 800;">OVER APPS</span>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted);">
+        Launches full-screen popup dialog over any running app. Duplicate messages (e.g. <i>"limon"</i>) execute repeatedly with zero delay.
+      </p>
+      <div class="form-group">
+        <label>Dialog Title</label>
+        <input type="text" id="popupTitle" value="Security Directive">
+      </div>
+      <div class="form-group">
+        <label>HTML Message</label>
+        <textarea id="popupBody">limon</textarea>
+      </div>
+      <div class="form-group">
+        <label>Button Label</label>
+        <input type="text" id="popupButton" value="Acknowledge">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="sendPopup()">
+        📨 Send Popup to Phone
+      </button>
     </div>
 
-    <!-- 3. HTML Notification Dispatcher -->
+    <!-- 3. Remote Rich HTML Notification -->
     <div class="card">
-        <div class="card-title">3. Send Customized HTML Notification</div>
-        <div class="card-desc">Push a rich HTML-markup notification straight to the device's notification shade.</div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div>
-                <label>HTML Title</label>
-                <input type="text" id="notifTitle" value="<b><font color='#00E5FF'>STEALTH ALERT</font></b>">
-            </div>
-            <div>
-                <label>HTML Body</label>
-                <textarea id="notifBody" rows="3"><p>Directive from <i>Admin Console</i>.<br>Device security status: <b>RESTRICTED</b>.</p></textarea>
-            </div>
-            <div>
-                <button class="btn btn-cyan" onclick="sendHtmlNotification()">Send HTML Notification</button>
-            </div>
-        </div>
+      <div class="card-header">
+        <div class="card-title">🔔 HTML Notification</div>
+        <span style="font-size: 11px; color: var(--warning); font-weight: 800;">HEADS-UP</span>
+      </div>
+      <p style="font-size: 13px; color: var(--text-muted);">
+        Dispatches custom formatted HTML alerts directly into the system notification shade.
+      </p>
+      <div class="form-group">
+        <label>Notification Title</label>
+        <input type="text" id="notifTitle" value="<b><font color='#00E5FF'>Remote Directive</font></b>">
+      </div>
+      <div class="form-group">
+        <label>Notification Body (HTML)</label>
+        <textarea id="notifBody"><p>Device state: <b>SECURED & ARMED</b>.</p></textarea>
+      </div>
+      <button class="btn btn-outline btn-block" onclick="sendNotification()" style="color: var(--primary); border-color: var(--primary);">
+        🔔 Dispatch Notification
+      </button>
     </div>
 
-    <!-- 4. HTML Floating Pop-up / Dialog Dispatcher -->
-    <div class="card">
-        <div class="card-title">4. Send Floating HTML Pop-up (Over Other Apps)</div>
-        <div class="card-desc">Instantly shows a modal dialog over whatever application the user is currently using.</div>
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-            <div>
-                <label>Popup Title</label>
-                <input type="text" id="dialogTitle" value="<font color='#FF1744'><b>SECURITY DIRECTIVE</b></font>">
-            </div>
-            <div>
-                <label>Popup HTML Content</label>
-                <textarea id="dialogHtml" rows="4"><h3>Warning from Admin</h3><p>Your session permissions have been updated. <b>Do not close this application.</b></p><p style="color:#00E5FF">• Encryption: Verified<br>• Protocol: Active</p></textarea>
-            </div>
-            <div class="grid-2">
-                <div>
-                    <label>Acknowledge Button Text</label>
-                    <input type="text" id="dialogBtnText" value="I Understand">
-                </div>
-                <div style="display: flex; align-items: flex-end;">
-                    <button class="btn btn-rose" style="width: 100%;" onclick="sendHtmlDialog()">Display Pop-up Over Apps</button>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <!-- 4. Remote App List & Lock Configuration -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📱 Installed Apps & Remote Credentials Override</div>
+      <button class="btn btn-outline" onclick="requestAppList()" style="padding: 6px 12px; font-size: 12px;">
+        🔄 Refresh Apps from Phone
+      </button>
+    </div>
+    <p style="font-size: 13px; color: var(--text-muted);">
+      Select apps to lock from this web console. Webhook configuration strictly overrides local phone settings.
+    </p>
+
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+      <input type="text" id="appSearch" placeholder="Search apps (WhatsApp, Facebook, Photos)..." style="flex: 1;" oninput="filterApps()">
+      <button class="btn btn-outline" onclick="selectAllUser()" style="padding: 8px 12px; font-size: 12px;">Select All User Apps</button>
+      <button class="btn btn-outline" onclick="clearSelection()" style="padding: 8px 12px; font-size: 12px;">Clear Selection</button>
     </div>
 
-    <!-- 5. Real-Time Telemetry & Console Log -->
-    <div class="card">
-        <div class="card-title">5. Webhook Terminal Log</div>
-        <div id="terminal" class="log-terminal">
-            <div class="log-entry"><span class="log-time">[System]</span> Terminal initialized. Ready for operations.</div>
-        </div>
+    <div class="app-table-wrapper" id="appContainer">
+      <div style="padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px;">
+        Click "Refresh Apps from Phone" to fetch live application list.
+      </div>
     </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; border-top: 1px solid var(--card-border); padding-top: 16px;">
+      <div class="form-group">
+        <label>Remote Master PIN Override</label>
+        <input type="password" id="customPassword" placeholder="Enter new PIN (e.g. 1234)">
+        <span style="font-size: 11px; color: var(--text-muted);">Leave empty to keep current phone PIN</span>
+      </div>
+
+      <div class="form-group">
+        <label>Remote Pattern Override (0-8 Dot Sequence)</label>
+        <input type="text" id="customPattern" placeholder="e.g. 0,1,2,5 or tap pad below">
+        <div class="pattern-grid">
+          <button type="button" class="pattern-dot" onclick="toggleDot(0)">0</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(1)">1</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(2)">2</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(3)">3</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(4)">4</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(5)">5</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(6)">6</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(7)">7</button>
+          <button type="button" class="pattern-dot" onclick="toggleDot(8)">8</button>
+        </div>
+        <button class="btn btn-outline" onclick="resetPattern()" style="padding: 4px 8px; font-size: 11px;">Reset Pattern</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" onclick="applyLocks()" style="padding: 14px; font-size: 15px;">
+      💾 Apply Remote App Locks & Credentials Override
+    </button>
+  </div>
+
+  <!-- Terminal Output -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📋 Real-Time Execution Log</div>
+      <button class="btn btn-outline" onclick="document.getElementById('term').textContent = ''" style="padding: 4px 8px; font-size: 11px;">Clear</button>
+    </div>
+    <div class="terminal" id="term">System ready. Enter Firebase URL and connect...</div>
+  </div>
 </div>
 
 <script>
-    let pollInterval = null;
+  let sse = null;
+  let patternSequence = [];
 
-    window.onload = function() {
-        const savedUrl = localStorage.getItem('fb_url');
-        const savedChannel = localStorage.getItem('fb_channel');
-        if (savedUrl) document.getElementById('firebaseUrl').value = savedUrl;
-        if (savedChannel) document.getElementById('deviceChannel').value = savedChannel;
+  window.addEventListener('DOMContentLoaded', () => {
+    const url = localStorage.getItem('sg_fb_url') || '';
+    const ch = localStorage.getItem('sg_channel') || 'stealth_gate_01';
+    const tok = localStorage.getItem('sg_token') || '';
+    if (url) document.getElementById('fbUrl').value = url;
+    if (ch) document.getElementById('fbChannel').value = ch;
+    if (tok) document.getElementById('fbToken').value = tok;
+    if (url) connect();
+  });
 
-        if (savedUrl && savedChannel) {
-            startPolling();
-        }
-    };
+  function log(msg) {
+    const term = document.getElementById('term');
+    const t = new Date().toLocaleTimeString();
+    term.textContent = `[${t}] ${msg}\n` + term.textContent;
+  }
 
-    function saveConfig() {
-        const url = document.getElementById('firebaseUrl').value.trim();
-        const channel = document.getElementById('deviceChannel').value.trim();
+  function getBaseUrl() {
+    let u = document.getElementById('fbUrl').value.trim();
+    if (!u.startsWith('http://') && !u.startsWith('https://')) u = 'https://' + u;
+    if (u.endsWith('/')) u = u.slice(0, -1);
+    return u;
+  }
 
-        if (!url || !channel) {
-            log('Error: Firebase URL and Channel ID required.');
-            return;
-        }
+  function getCh() { return document.getElementById('fbChannel').value.trim() || 'stealth_gate_01'; }
+  function getTok() { return document.getElementById('fbToken').value.trim(); }
 
-        localStorage.setItem('fb_url', url);
-        localStorage.setItem('fb_channel', channel);
-        log(`Saved configuration for channel: ${channel}`);
-        startPolling();
-    }
+  function endpoint(path = '') {
+    const b = getBaseUrl();
+    const ch = getCh();
+    const tok = getTok();
+    const p = path ? (path.startsWith('/') ? path : '/' + path) : '';
+    let finalUrl = `${b}/${ch}${p}.json`;
+    if (tok) finalUrl += (finalUrl.includes('?') ? '&' : '?') + `auth=${tok}`;
+    return finalUrl;
+  }
 
-    function getBaseUrl() {
-        let url = document.getElementById('firebaseUrl').value.trim();
-        if (url.endsWith('/')) url = url.slice(0, -1);
-        if (url.endsWith('.json')) url = url.replace(/\/[^/]+\.json$/, '');
-        return url;
-    }
+  function connect() {
+    const b = getBaseUrl();
+    const ch = getCh();
+    const tok = getTok();
+    if (!b || b === 'https://') { alert('Please enter a valid Firebase Realtime Database URL.'); return; }
 
-    function getChannel() {
-        return document.getElementById('deviceChannel').value.trim() || 'stealth_gate_01';
-    }
+    localStorage.setItem('sg_fb_url', b);
+    localStorage.setItem('sg_channel', ch);
+    localStorage.setItem('sg_token', tok);
 
-    function log(msg) {
-        const terminal = document.getElementById('terminal');
-        const time = new Date().toLocaleTimeString();
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
-        terminal.appendChild(entry);
-        terminal.scrollTop = terminal.scrollHeight;
-    }
+    log(`Opening persistent SSE stream to: ${ch}...`);
+    if (sse) sse.close();
 
-    async function sendPatch(data, successMsg) {
-        const base = getBaseUrl();
-        const channel = getChannel();
-        if (!base) return log('Error: Firebase Database URL not set.');
-
-        const endpoint = `${base}/${channel}.json`;
+    try {
+      sse = new EventSource(endpoint(''));
+      sse.addEventListener('put', e => {
         try {
-            log(`Dispatching PATCH to ${channel}...`);
-            const res = await fetch(endpoint, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-
-            if (res.ok) {
-                log(`✓ Success: ${successMsg}`);
-            } else {
-                log(`✕ Request Failed: HTTP ${res.status}`);
-            }
-        } catch (e) {
-            log(`✕ Network Error: ${e.message}`);
-        }
-    }
-
-    function sendTriggerLock() {
-        sendPatch({ triggerLock: true, commandTimestamp: Date.now() }, 'Trigger Lock sent: Phone will turn screen off & lock immediately.');
-    }
-
-    function sendEmergencyLock() {
-        sendPatch({ emergencyLock: true, commandTimestamp: Date.now() }, 'Emergency Lockdown sent: All restricted apps barred.');
-    }
-
-    function setGateEnabled(enabled) {
-        sendPatch({ isGateEnabled: enabled, commandTimestamp: Date.now() }, `Gate security set to: ${enabled ? 'ACTIVE' : 'PAUSED'}`);
-    }
-
-    function sendHtmlNotification() {
-        const title = document.getElementById('notifTitle').value;
-        const html = document.getElementById('notifBody').value;
-        sendPatch({
-            notification: {
-                title: title,
-                html: html,
-                id: Math.floor(Math.random() * 9000) + 1000
-            },
-            commandTimestamp: Date.now()
-        }, 'HTML Notification dispatched.');
-    }
-
-    function sendHtmlDialog() {
-        const title = document.getElementById('dialogTitle').value;
-        const html = document.getElementById('dialogHtml').value;
-        const btn = document.getElementById('dialogBtnText').value || 'Acknowledge';
-        sendPatch({
-            dialog: {
-                title: title,
-                html: html,
-                buttonText: btn
-            },
-            commandTimestamp: Date.now()
-        }, 'Floating HTML Pop-up dispatched.');
-    }
-
-    async function pollStatus() {
-        const base = getBaseUrl();
-        const channel = getChannel();
-        if (!base) return;
-
-        const endpoint = `${base}/${channel}/status.json`;
+          const p = JSON.parse(e.data);
+          onData(p.path, p.data);
+        } catch (_) {}
+      });
+      sse.addEventListener('patch', e => {
         try {
-            const start = performance.now();
-            const res = await fetch(endpoint, { cache: 'no-store' });
-            const latency = Math.round(performance.now() - start);
-
-            if (res.ok) {
-                const data = await res.json();
-                updateBadge(data, latency);
-            } else {
-                setDeviceOffline('HTTP ' + res.status);
-            }
-        } catch (e) {
-            setDeviceOffline('UNREACHABLE');
-        }
+          const p = JSON.parse(e.data);
+          onData(p.path, p.data);
+        } catch (_) {}
+      });
+      sse.onopen = () => log('🟢 Real-Time SSE Stream connected to Firebase!');
+      sse.onerror = () => setOffline();
+    } catch (err) {
+      log('Connection failed: ' + err.message);
     }
 
-    function updateBadge(data, latency) {
-        const badge = document.getElementById('deviceBadge');
-        const text = document.getElementById('deviceStatusText');
-        const pingInfo = document.getElementById('pingInfo');
+    pullStatus();
+    pullAppList();
+  }
 
-        if (!data) {
-            setDeviceOffline('NO DATA');
-            return;
-        }
+  function onData(path, data) {
+    if (!data) return;
+    if (path === '/status' || (path === '/' && data.status)) {
+      renderTelemetry(data.status || data);
+    } else if (path === '/appList' || (path === '/' && data.appList)) {
+      const appData = data.appList || data;
+      renderApps(appData.apps || []);
+    } else if (path === '/syncResponse' || (path === '/' && data.syncResponse)) {
+      const r = data.syncResponse || data;
+      log(`Device Response [${r.action}]: ${r.status} — ${r.message || ''}`);
+    }
+  }
 
-        const now = Date.now();
-        const diffSec = Math.round((now - (data.lastHeartbeatTime || 0)) / 1000);
-        const isRecent = diffSec < 90; // Heartbeat valid within 90s
-
-        if (data.canReceiveData && isRecent) {
-            badge.className = 'status-badge online';
-            text.innerText = `ONLINE (${data.networkType || 'READY'})`;
-            pingInfo.innerText = `Latency: ${latency}ms • Last seen: ${diffSec}s ago • Apps Blocked: ${data.currentlyBlockedApps || 0}`;
+  async function pullStatus() {
+    try {
+      const t0 = Date.now();
+      const res = await fetch(endpoint('/status'));
+      if (res.ok) {
+        const d = await res.json();
+        const ping = Date.now() - t0;
+        if (d && d.online) {
+          setOnline(ping);
+          renderTelemetry(d);
         } else {
-            badge.className = 'status-badge offline';
-            text.innerText = `OFFLINE (${diffSec}s ago)`;
-            pingInfo.innerText = `Device inactive. Cannot receive webhooks right now.`;
+          setOffline();
         }
-    }
+      }
+    } catch (_) { setOffline(); }
+  }
 
-    function setDeviceOffline(reason) {
-        const badge = document.getElementById('deviceBadge');
-        const text = document.getElementById('deviceStatusText');
-        badge.className = 'status-badge offline';
-        text.innerText = `DEVICE DATA OFF (${reason})`;
-    }
+  function setOnline(ping) {
+    const b = document.getElementById('liveBadge');
+    b.className = 'status-badge online';
+    document.getElementById('badgeText').textContent = 'ONLINE (DEVICE REACHABLE)';
+    if (ping !== undefined) document.getElementById('badgePing').textContent = `(${ping}ms)`;
+  }
 
-    function startPolling() {
-        if (pollInterval) clearInterval(pollInterval);
-        pollStatus();
-        pollInterval = setInterval(pollStatus, 5000); // Check status every 5 seconds
+  function setOffline() {
+    const b = document.getElementById('liveBadge');
+    b.className = 'status-badge';
+    document.getElementById('badgeText').textContent = 'DEVICE OFFLINE / DISCONNECTED';
+    document.getElementById('badgePing').textContent = '';
+  }
+
+  function renderTelemetry(s) {
+    if (!s) return;
+    document.getElementById('telShield').textContent = s.isGateEnabled ? 'ACTIVE (SHIELDED)' : 'PAUSED';
+    document.getElementById('telShield').style.color = s.isGateEnabled ? 'var(--success)' : 'var(--text-muted)';
+    document.getElementById('telNetwork').textContent = s.networkType || 'ONLINE';
+    document.getElementById('telLockedCount').textContent = s.totalProtectedApps || '0';
+    if (s.lastHeartbeatTime) {
+      document.getElementById('telHeartbeat').textContent = new Date(s.lastHeartbeatTime).toLocaleTimeString();
     }
+  }
+
+  /* 1. Instant Lock */
+  async function sendTriggerLock() {
+    const now = Date.now();
+    log('⚡ Dispatched INSTANT TRIGGER LOCK command to phone...');
+    const cmdId = `cmd_lock_${now}`;
+    try {
+      await fetch(endpoint(`/commands/${cmdId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: cmdId, action: "lock", triggerLock: true, timestamp: now, status: "PENDING" })
+      });
+      await fetch(endpoint(''), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggerLock: true, commandTimestamp: now })
+      });
+      log('Trigger lock signal sent! Screen shutting off & overlay deploying.');
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  async function toggleGate(enable) {
+    log(`Gate Shield toggle: ${enable ? 'ACTIVE' : 'PAUSED'}...`);
+    try {
+      await fetch(endpoint(''), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isGateEnabled: enable, timestamp: Date.now() })
+      });
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  async function sendEmergencyLock() {
+    log('🚨 Triggering EMERGENCY LOCKDOWN...');
+    try {
+      await fetch(endpoint(''), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emergencyLock: true, timestamp: Date.now() })
+      });
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  /* 2. Remote Popup */
+  async function sendPopup() {
+    const title = document.getElementById('popupTitle').value.trim() || 'Security Directive';
+    const body = document.getElementById('popupBody').value.trim();
+    const btn = document.getElementById('popupButton').value.trim() || 'Acknowledge';
+    if (!body) { alert('Please enter message text.'); return; }
+
+    const now = Date.now();
+    log(`Sending POPUP [${body}] to phone...`);
+    try {
+      await fetch(endpoint('/popup'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: `popup_${now}`, title: title, html: body, buttonText: btn, timestamp: now })
+      });
+      log(`Popup "${body}" successfully delivered!`);
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  /* 3. Notification */
+  async function sendNotification() {
+    const title = document.getElementById('notifTitle').value.trim() || 'Directive';
+    const body = document.getElementById('notifBody').value.trim();
+    const now = Date.now();
+    log(`Dispatching HTML Notification [${title}]...`);
+    try {
+      await fetch(endpoint('/notification'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Math.floor(Math.random() * 90000) + 10000, title: title, html: body, timestamp: now })
+      });
+      log('Notification posted to phone tray!');
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  /* 4. App List */
+  async function requestAppList() {
+    log('Requesting full installed apps list from phone...');
+    try {
+      await fetch(endpoint(''), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: "get_installed_apps", timestamp: Date.now() })
+      });
+      setTimeout(pullAppList, 1500);
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  async function pullAppList() {
+    try {
+      const res = await fetch(endpoint('/appList'));
+      if (res.ok) {
+        const d = await res.json();
+        if (d && d.apps) renderApps(d.apps);
+      }
+    } catch (_) {}
+  }
+
+  function renderApps(apps) {
+    const c = document.getElementById('appContainer');
+    if (!apps || apps.length === 0) {
+      c.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px;">No apps found. Click "Refresh Apps from Phone".</div>';
+      return;
+    }
+    let html = '';
+    apps.forEach(app => {
+      const isChk = app.isProtected ? 'checked' : '';
+      const bClass = app.isSystemApp ? 'badge-sys' : 'badge-user';
+      const bLabel = app.isSystemApp ? 'System' : 'User App';
+      html += `
+        <div class="app-row" data-name="${app.appName.toLowerCase()}" data-pkg="${app.packageName.toLowerCase()}">
+          <div>
+            <span style="font-weight: 700; font-size: 14px;">${escapeHtml(app.appName)}</span>
+            <span class="${bClass}">${bLabel}</span>
+            <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${escapeHtml(app.packageName)}</div>
+          </div>
+          <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" class="app-chk" value="${escapeHtml(app.packageName)}" ${isChk} style="width: 18px; height: 18px; cursor: pointer;">
+            <span style="font-size: 12px; font-weight: 700;">Lock App</span>
+          </label>
+        </div>
+      `;
+    });
+    c.innerHTML = html;
+    log(`Rendered ${apps.length} applications from phone.`);
+  }
+
+  function filterApps() {
+    const q = document.getElementById('appSearch').value.toLowerCase().trim();
+    document.querySelectorAll('.app-row').forEach(row => {
+      const n = row.getAttribute('data-name');
+      const p = row.getAttribute('data-pkg');
+      row.style.display = (n.includes(q) || p.includes(q)) ? 'flex' : 'none';
+    });
+  }
+
+  function selectAllUser() {
+    document.querySelectorAll('.app-row').forEach(row => {
+      if (row.querySelector('.badge-user')) row.querySelector('.app-chk').checked = true;
+    });
+  }
+
+  function clearSelection() {
+    document.querySelectorAll('.app-chk').forEach(c => c.checked = false);
+  }
+
+  function toggleDot(i) {
+    const idx = patternSequence.indexOf(i);
+    if (idx >= 0) patternSequence.splice(idx, 1);
+    else patternSequence.push(i);
+    document.getElementById('customPattern').value = patternSequence.join(',');
+    updatePad();
+  }
+
+  function updatePad() {
+    document.querySelectorAll('.pattern-dot').forEach((btn, i) => {
+      btn.classList.toggle('active', patternSequence.includes(i));
+    });
+  }
+
+  function resetPattern() {
+    patternSequence = [];
+    document.getElementById('customPattern').value = '';
+    updatePad();
+  }
+
+  /* 5. Apply Remote Locks */
+  async function applyLocks() {
+    const chks = document.querySelectorAll('.app-chk:checked');
+    const pkgs = Array.from(chks).map(c => c.value);
+    const pwd = document.getElementById('customPassword').value.trim();
+    const pat = document.getElementById('customPattern').value.trim();
+
+    log(`Applying Remote App Locks: ${pkgs.length} apps selected...`);
+    try {
+      await fetch(endpoint(''), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: "set_app_locks",
+          lockedApps: pkgs,
+          customPassword: pwd || null,
+          customPattern: pat || null,
+          isGateEnabled: true,
+          timestamp: Date.now()
+        })
+      });
+      log('Remote override deployed! Phone is enforcing updated locks.');
+    } catch (e) { log('Error: ' + e.message); }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
+  setInterval(pullStatus, 12000);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
