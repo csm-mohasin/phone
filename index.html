@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Stealth Gate — Web Controller & Webhook Command Center</title>
+  <title>Stealth Gate — Webhook Command Center & Remote Phone Controller</title>
   <style>
     :root {
       --bg: #070B14;
@@ -153,7 +153,7 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    input:focus, textarea:focus {
+    input:focus, textarea:focus, select:focus {
       border-color: var(--primary);
     }
     textarea {
@@ -327,6 +327,36 @@
     </div>
   </div>
 
+  <!-- Live Password Synchronization Card -->
+  <div class="card" style="border-left: 4px solid var(--primary);">
+    <div class="card-header">
+      <div class="card-title">🔑 Live Bidirectional Passwords & Credentials</div>
+      <span style="font-size: 11px; color: var(--primary); font-weight: 800;">AUTO SYNCED</span>
+    </div>
+    <p style="font-size: 13px; color: var(--text-muted);">
+      Both passwords are saved in plain text (PIN: <code>1234</code>, Pattern: <code>01245</code>). Changing here updates Firebase and syncs to phone; changing on phone updates here automatically.
+    </p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+      <div class="form-group">
+        <label>Admin Master Password (Unlocks All Apps)</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="liveAdminPassword" placeholder="e.g. 1234 or 01245">
+          <select id="liveAdminAuthMode" style="width: 110px;">
+            <option value="PIN">PIN</option>
+            <option value="PATTERN">PATTERN</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Second / Cause (Decoy) Password</label>
+        <input type="text" id="liveSecondPassword" placeholder="Second Password (keeps restricted apps locked)">
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="syncCredentialsToPhone()" style="align-self: flex-start; border-color: var(--primary); color: var(--primary);">
+      🔄 Push Updated Passwords to Phone
+    </button>
+  </div>
+
   <!-- Control Grid -->
   <div class="grid-3">
 
@@ -337,7 +367,7 @@
         <span style="font-size: 11px; color: var(--success); font-weight: 800;">SUB-MS</span>
       </div>
       <p style="font-size: 13px; color: var(--text-muted);">
-        Turns off the screen instantly & deploys full-screen barrier overlay. Revokes both Master & Decoy unlock sessions. Clears nodes in Firebase immediately for repeat execution.
+        Turns off the screen instantly & deploys barrier overlay. Overrides and revokes all active unlock sessions.
       </p>
       <button class="btn btn-danger btn-block" onclick="sendTriggerLock()" style="padding: 16px; font-size: 15px;">
         🔒 TRIGGER INSTANT SCREEN LOCK
@@ -410,7 +440,7 @@
       </button>
     </div>
     <p style="font-size: 13px; color: var(--text-muted);">
-      Select apps to lock from this web console. Webhook configuration strictly overrides local phone settings.
+      Select apps to lock. Selected apps remain permanently saved and locked until you uncheck them.
     </p>
 
     <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
@@ -434,7 +464,7 @@
 
       <div class="form-group">
         <label>Remote Pattern Override (0-8 Dot Sequence)</label>
-        <input type="text" id="customPattern" placeholder="e.g. 0,1,2,5 or tap pad below">
+        <input type="text" id="customPattern" placeholder="e.g. 01245 or tap pad below">
         <div class="pattern-grid">
           <button type="button" class="pattern-dot" onclick="toggleDot(0)">0</button>
           <button type="button" class="pattern-dot" onclick="toggleDot(1)">1</button>
@@ -468,6 +498,8 @@
 <script>
   let sse = null;
   let patternSequence = [];
+  let currentlySelectedPackages = new Set();
+  let cachedAppsList = [];
 
   window.addEventListener('DOMContentLoaded', () => {
     const url = localStorage.getItem('sg_fb_url') || '';
@@ -540,6 +572,7 @@
 
     pullStatus();
     pullAppList();
+    pullCredentials();
   }
 
   function onData(path, data) {
@@ -549,9 +582,14 @@
     } else if (path === '/appList' || (path === '/' && data.appList)) {
       const appData = data.appList || data;
       renderApps(appData.apps || []);
+    } else if (path === '/credentials' || (path === '/' && data.credentials)) {
+      renderCredentials(data.credentials || data);
     } else if (path === '/syncResponse' || (path === '/' && data.syncResponse)) {
       const r = data.syncResponse || data;
       log(`Device Response [${r.action}]: ${r.status} — ${r.message || ''}`);
+    } else if (path === '/emergencyAlert' || (path === '/' && data.emergencyAlert)) {
+      const a = data.emergencyAlert || data;
+      log(`🚨 EMERGENCY EVENT DETECTED: ${a.event} from Phone!`);
     }
   }
 
@@ -594,6 +632,62 @@
     document.getElementById('telLockedCount').textContent = s.totalProtectedApps || '0';
     if (s.lastHeartbeatTime) {
       document.getElementById('telHeartbeat').textContent = new Date(s.lastHeartbeatTime).toLocaleTimeString();
+    }
+  }
+
+  async function pullCredentials() {
+    try {
+      const res = await fetch(endpoint('/credentials'));
+      if (res.ok) {
+        const d = await res.json();
+        if (d) renderCredentials(d);
+      }
+    } catch (_) {}
+  }
+
+  function renderCredentials(c) {
+    if (!c) return;
+    if (c.adminPassword) {
+      document.getElementById('liveAdminPassword').value = c.adminPassword;
+    }
+    if (c.adminAuthMode) {
+      document.getElementById('liveAdminAuthMode').value = c.adminAuthMode;
+    }
+    if (c.secondPasswords && c.secondPasswords.length > 0) {
+      document.getElementById('liveSecondPassword').value = c.secondPasswords[0].password || '';
+    }
+    log('Credentials synchronized from phone.');
+  }
+
+  async function syncCredentialsToPhone() {
+    const adminPass = document.getElementById('liveAdminPassword').value.trim();
+    const adminMode = document.getElementById('liveAdminAuthMode').value;
+    const secondPass = document.getElementById('liveSecondPassword').value.trim();
+
+    log('Pushing updated passwords to Firebase & Device...');
+    const payload = {
+      adminPassword: adminPass,
+      adminAuthMode: adminMode,
+      secondPasswords: secondPass ? [{
+        id: "decoy_1",
+        label: "Decoy Profile",
+        password: secondPass,
+        authMode: adminMode,
+        boundPackageNames: []
+      }] : [],
+      lastUpdated: Date.now(),
+      updatedBy: "WEBSITE"
+    };
+
+    try {
+      await fetch(endpoint('/credentials'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      log('Passwords successfully saved! Device auto-syncing.');
+    } catch (e) {
+      log('Error syncing passwords: ' + e.message);
     }
   }
 
@@ -698,14 +792,21 @@
   }
 
   function renderApps(apps) {
+    cachedAppsList = apps;
     const c = document.getElementById('appContainer');
     if (!apps || apps.length === 0) {
       c.innerHTML = '<div style="padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px;">No apps found. Click "Refresh Apps from Phone".</div>';
       return;
     }
+
+    // Preserve previously marked apps
+    apps.forEach(app => {
+      if (app.isProtected) currentlySelectedPackages.add(app.packageName);
+    });
+
     let html = '';
     apps.forEach(app => {
-      const isChk = app.isProtected ? 'checked' : '';
+      const isChk = currentlySelectedPackages.has(app.packageName) ? 'checked' : '';
       const bClass = app.isSystemApp ? 'badge-sys' : 'badge-user';
       const bLabel = app.isSystemApp ? 'System' : 'User App';
       html += `
@@ -716,7 +817,7 @@
             <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${escapeHtml(app.packageName)}</div>
           </div>
           <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" class="app-chk" value="${escapeHtml(app.packageName)}" ${isChk} style="width: 18px; height: 18px; cursor: pointer;">
+            <input type="checkbox" class="app-chk" value="${escapeHtml(app.packageName)}" ${isChk} onchange="handleAppCheckbox(this)" style="width: 18px; height: 18px; cursor: pointer;">
             <span style="font-size: 12px; font-weight: 700;">Lock App</span>
           </label>
         </div>
@@ -724,6 +825,14 @@
     });
     c.innerHTML = html;
     log(`Rendered ${apps.length} applications from phone.`);
+  }
+
+  function handleAppCheckbox(el) {
+    if (el.checked) {
+      currentlySelectedPackages.add(el.value);
+    } else {
+      currentlySelectedPackages.delete(el.value);
+    }
   }
 
   function filterApps() {
@@ -736,26 +845,34 @@
   }
 
   function selectAllUser() {
+    cachedAppsList.forEach(app => {
+      if (!app.isSystemApp) currentlySelectedPackages.add(app.packageName);
+    });
     document.querySelectorAll('.app-row').forEach(row => {
-      if (row.querySelector('.badge-user')) row.querySelector('.app-chk').checked = true;
+      if (row.querySelector('.badge-user')) {
+        const chk = row.querySelector('.app-chk');
+        if (chk) chk.checked = true;
+      }
     });
   }
 
   function clearSelection() {
+    currentlySelectedPackages.clear();
     document.querySelectorAll('.app-chk').forEach(c => c.checked = false);
   }
 
   function toggleDot(i) {
-    const idx = patternSequence.indexOf(i);
+    const str = i.toString();
+    const idx = patternSequence.indexOf(str);
     if (idx >= 0) patternSequence.splice(idx, 1);
-    else patternSequence.push(i);
-    document.getElementById('customPattern').value = patternSequence.join(',');
+    else patternSequence.push(str);
+    document.getElementById('customPattern').value = patternSequence.join('');
     updatePad();
   }
 
   function updatePad() {
     document.querySelectorAll('.pattern-dot').forEach((btn, i) => {
-      btn.classList.toggle('active', patternSequence.includes(i));
+      btn.classList.toggle('active', patternSequence.includes(i.toString()));
     });
   }
 
@@ -767,12 +884,11 @@
 
   /* 5. Apply Remote Locks */
   async function applyLocks() {
-    const chks = document.querySelectorAll('.app-chk:checked');
-    const pkgs = Array.from(chks).map(c => c.value);
+    const pkgs = Array.from(currentlySelectedPackages);
     const pwd = document.getElementById('customPassword').value.trim();
     const pat = document.getElementById('customPattern').value.trim();
 
-    log(`Applying Remote App Locks: ${pkgs.length} apps selected...`);
+    log(`Applying Remote App Locks: ${pkgs.length} apps locked...`);
     try {
       await fetch(endpoint(''), {
         method: 'PATCH',
@@ -780,6 +896,7 @@
         body: JSON.stringify({
           action: "set_app_locks",
           lockedApps: pkgs,
+          protectedPackages: pkgs,
           customPassword: pwd || null,
           customPattern: pat || null,
           isGateEnabled: true,
